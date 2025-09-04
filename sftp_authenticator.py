@@ -89,11 +89,11 @@ class SFTPAuthenticator:
             AuthenticationError: If authentication fails.
         """
         if password:
-            if password != secret_data.get("password"):
+            if password != secret_data.get("Password"):
                 raise AuthenticationError("Invalid credentials.")
             logger.info("Password authentication successful.")
         else:
-            if "ssh_public_key" not in secret_data:
+            if "SshPublicKey" not in secret_data:
                 raise AuthenticationError("No public key configured for user.")
             logger.info("Proceeding with public key authentication.")
 
@@ -111,24 +111,18 @@ class SFTPAuthenticator:
             A dictionary with the user details for AWS Transfer Family.
 
         Raises:
-            AuthenticationError: If the IAM role is not found in the secret data.
+            AuthenticationError: If a mandatory field is not found in the secret data.
         """
-        role = secret_data.get("iam_role")
-        if not role:
-            raise AuthenticationError("IAM role not configured for user.")
+        response = {}
 
-        home_directory_base = os.environ.get("HOME_DIRECTORY_BASE", "/sftp-home")
-        home_directory_details = [
-            {"Entry": "/", "Target": f"{home_directory_base}/{username}"}
-        ]
+        # Mandatory fields from secret
+        for field in ["Role", "HomeDirectory", "HomeDirectoryDetails", "HomeDirectoryType"]:
+            if field not in secret_data:
+                raise AuthenticationError(f"'{field}' not configured for user {username}")
+            response[field] = secret_data[field]
 
-        response: Dict[str, Any] = {
-            "Role": role,
-            "HomeDirectoryType": "LOGICAL",
-            "HomeDirectoryDetails": home_directory_details,
-        }
-
-        if "ssh_public_key" in secret_data:
-            response["PublicKeys"] = [secret_data["ssh_public_key"]]
+        # Optional: Public Key
+        if "SshPublicKey" in secret_data:
+            response["PublicKeys"] = [secret_data["SshPublicKey"]]
 
         return response
