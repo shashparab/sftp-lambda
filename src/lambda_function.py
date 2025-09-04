@@ -60,5 +60,6 @@ def lambda_handler(event: Dict[str, Any], context: object) -> Dict[str, Any]:
         return response
     except AuthenticationError as e:
         logger.error("Authentication failed: %s", e)
+        authenticator.invalidate_cache(secret_name)
         # Re-raise the exception to ensure the authentication fails in Transfer Family
         raise e

@@ -130,3 +130,14 @@ class SFTPAuthenticator:
             response["PublicKeys"] = [secret_data["SshPublicKey"]]
 
         return response
+
+    def invalidate_cache(self, secret_name: str) -> None:
+        """
+        Invalidates the cache for a specific secret.
+
+        Args:
+            secret_name: The name of the secret to invalidate.
+        """
+        if secret_name in self._cache:
+            del self._cache[secret_name]
+            logger.info("Invalidated cache for secret '%s'.", secret_name)
