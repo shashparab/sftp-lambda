@@ -88,6 +88,10 @@ class SFTPAuthenticator:
         Raises:
             AuthenticationError: If authentication fails.
         """
+        if "Password" not in secret_data and "SshPublicKey" not in secret_data:
+            raise AuthenticationError(
+                "No 'Password' or 'SshPublicKey' configured for user."
+            )
         if password:
             if password != secret_data.get("Password"):
                 raise AuthenticationError("Invalid credentials.")
