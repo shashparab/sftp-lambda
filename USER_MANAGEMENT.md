@@ -5,9 +5,25 @@ This document outlines the process for managing users for the SFTP service.
 
 ## User Management Overview
 
-User access to the SFTP server is managed through **AWS Secrets Manager**. Each SFTP user has a corresponding secret in Secrets Manager that stores their configuration and credentials.
+User access to the SFTP server is managed through a **Custom Identity Provider**, which is an AWS Lambda function that integrates with AWS Secrets Manager. Each SFTP user has a corresponding secret in Secrets Manager that stores their configuration and credentials.
 
 The process is partially automated using a Terraform module, with a manual step for setting passwords to accommodate existing user credentials.
+
+## End-to-End Authentication Flow
+
+The following steps outline the end-to-end authentication flow for an SFTP user:
+
+1.  **Connection Attempt**: A user attempts to connect to the AWS Transfer Family SFTP server using their SFTP client.
+2.  **Custom Identity Provider Invocation**: The AWS Transfer Family service is configured to use a custom identity provider. When a login attempt occurs, it triggers an AWS Lambda function, passing the username and password (if provided).
+3.  **Secret Retrieval**: The Lambda function constructs the name of the secret in AWS Secrets Manager based on the provided username (e.g., `prod/sftp/<username>`). It then retrieves this secret.
+4.  **Authentication**: The Lambda function verifies the user's credentials:
+    *   **For password authentication**, it compares the provided password with the `Password` value in the secret.
+    *   **For public key authentication**, it relies on the AWS Transfer Family service to compare the user's private key with the `SshPublicKey` stored in the secret.
+5.  **Successful Authentication**: If the credentials are valid, the Lambda function returns a response to the AWS Transfer Family service that includes:
+    *   The user's IAM `Role`.
+    *   The user's `HomeDirectory` and `HomeDirectoryDetails`.
+    *   The AWS Transfer Family service then grants the user access to the SFTP server with the specified IAM role and home directory.
+6.  **Failed Authentication**: If the credentials are not valid, the Lambda function returns an error, and the AWS Transfer Family service denies access to the user.
 
 ## User Provisioning Process
 
