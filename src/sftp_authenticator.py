@@ -88,21 +88,24 @@ class SFTPAuthenticator:
         Raises:
             AuthenticationError: If authentication fails.
         """
-        if "Password" not in secret_data and "SshPublicKey" not in secret_data:
+        if "Password" not in secret_data and "SshPublicKeys" not in secret_data:
             raise AuthenticationError(
-                "No 'Password' or 'SshPublicKey' configured for user."
+                "No 'Password' or 'SshPublicKeys' configured for user."
             )
         if password:
             if password != secret_data.get("Password"):
                 raise AuthenticationError("Invalid credentials.")
             logger.info("Password authentication successful.")
         else:
-            if "SshPublicKey" not in secret_data:
+            if "SshPublicKeys" not in secret_data:
                 raise AuthenticationError("No public key configured for user.")
             logger.info("Proceeding with public key authentication.")
 
     def construct_success_response(
-        self, username: str, secret_data: Dict[str, Any]
+        self,
+        username: str,
+        secret_data: Dict[str, Any],
+        password_provided: bool = False,
     ) -> Dict[str, Any]:
         """
         Constructs the success response for AWS Transfer Family.
@@ -110,6 +113,7 @@ class SFTPAuthenticator:
         Args:
             username: The username of the authenticated user.
             secret_data: The secret data for the user.
+            password_provided: True if a password was provided for authentication.
 
         Returns:
             A dictionary with the user details for AWS Transfer Family.
@@ -125,9 +129,9 @@ class SFTPAuthenticator:
                 raise AuthenticationError(f"'{field}' not configured for user {username}")
             response[field] = secret_data[field]
 
-        # Optional: Public Key
-        if "SshPublicKey" in secret_data:
-            response["PublicKeys"] = [secret_data["SshPublicKey"]]
+        # Optional: Public Keys. Only include if password was not used for auth.
+        if not password_provided and "SshPublicKeys" in secret_data:
+            response["PublicKeys"] = secret_data["SshPublicKeys"]
 
         return response
 

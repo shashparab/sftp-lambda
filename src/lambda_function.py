@@ -17,6 +17,12 @@ logger.setLevel(logging.INFO)
 
 secrets_manager_client = boto3.client("secretsmanager")
 cache_ttl = int(os.environ.get("CACHE_TTL_SECONDS", "300"))
+try:
+    cache_ttl = int(os.environ.get("CACHE_TTL_SECONDS", "300"))
+except (ValueError, TypeError):
+    logger.warning("Invalid CACHE_TTL_SECONDS, defaulting to 300.")
+    cache_ttl = 300
+
 authenticator = SFTPAuthenticator(secrets_manager_client, cache_ttl_seconds=cache_ttl)
 
 
@@ -55,7 +61,9 @@ def lambda_handler(event: Dict[str, Any], context: object) -> Dict[str, Any]:
     try:
         secret_data = authenticator.get_secret(secret_name)
         authenticator.authenticate_user(password, secret_data)
-        response = authenticator.construct_success_response(username, secret_data)
+        response = authenticator.construct_success_response(
+            username, secret_data, password_provided=(password is not None)
+        )
         logger.info("Successfully authenticated user %s.", username)
         return response
     except AuthenticationError as e:
